@@ -15,6 +15,10 @@
     "dev:shared": "npm run build -w @bugkiller/shared -- --watch",
     "build": "npm run build -w @bugkiller/shared && npm run build -w @bugkiller/api && npm run build -w @bugkiller/web",
     "pull:dev": "bash scripts/pull-and-dev.sh",
+    "watch:projects": "node scripts/watch-and-commit.mjs",
+    "sync:projects": "node scripts/watch-and-commit.mjs --once",
+    "sync:projects:dry": "node scripts/watch-and-commit.mjs --once --dry-run",
+    "pull:projects": "node scripts/watch-and-commit.mjs --pull-only",
     "logs:collect": "bash scripts/collect-logs.sh",
     "optimize": "bash scripts/optimize-from-logs.sh",
     "mobile:hint": "bash scripts/mobile-hint.sh"

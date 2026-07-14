@@ -1,0 +1,38 @@
+{
+  "debounceMs": 8000,
+  "pollIntervalMs": 3000,
+  "pullIntervalMs": 60000,
+  "autoPull": true,
+  "autoPush": true,
+  "pullMode": "ff-only",
+  "commitMessage": "chore(auto): sync {name} @ {time}",
+  "projects": [
+    {
+      "name": "bugkiller",
+      "path": ".",
+      "remote": "origin",
+      "branch": "main",
+      "autoPull": true,
+      "autoPush": true,
+      "enabled": true
+    },
+    {
+      "name": "example-web",
+      "path": "../my-web-app",
+      "remote": "origin",
+      "branch": "main",
+      "autoPull": true,
+      "autoPush": true,
+      "enabled": true
+    },
+    {
+      "name": "example-api",
+      "path": "../my-api",
+      "remote": "origin",
+      "branch": "main",
+      "autoPull": true,
+      "autoPush": true,
+      "enabled": true
+    }
+  ]
+}
