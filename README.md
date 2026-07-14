@@ -68,16 +68,16 @@
 
 前置：Node.js ≥ 18；可选 Android Studio / Xcode（跑原生工程时）。
 
+**纯本地联调可完全跳过 GitHub**：不必配置 remote / push / pull，直接 `make setup && make dev`（或 `./scripts/dev-all.sh`）即可。
+
 ```bash
 cd /path/to/bugkiller
-git pull
-npm install
-make pull-dev          # pull + 启动三项目
-# 或
-npm run pull:dev
-# 或只启动（已 pull）：
-make dev
+npm install            # 或 make setup
+make dev               # 推荐：本地启动，不碰远程
 ./scripts/dev-all.sh
+# 若已绑定远程且需要先拉代码：
+# git pull && make pull-dev
+# 或 npm run pull:dev
 ```
 
 启动后：

@@ -26,21 +26,16 @@ fi
 : > "$PID_FILE"
 
 echo "[dev-all] 启动 Shared ..."
-(
-  npm run dev -w @bugkiller/shared
-) >"$SHARED_LOG" 2>&1 &
+# nohup：避免 make/脚本退出后被 SIGHUP 杀掉
+nohup npm run dev -w @bugkiller/shared >"$SHARED_LOG" 2>&1 &
 echo $! >> "$PID_FILE"
 
 echo "[dev-all] 启动 API → logs/$(basename "$API_LOG")"
-(
-  npm run dev -w @bugkiller/api
-) >"$API_LOG" 2>&1 &
+nohup npm run dev -w @bugkiller/api >"$API_LOG" 2>&1 &
 echo $! >> "$PID_FILE"
 
 echo "[dev-all] 启动 Web → logs/$(basename "$WEB_LOG")"
-(
-  npm run dev -w @bugkiller/web
-) >"$WEB_LOG" 2>&1 &
+nohup npm run dev -w @bugkiller/web >"$WEB_LOG" 2>&1 &
 echo $! >> "$PID_FILE"
 
 # 方便 collect-logs 找到「当前」日志

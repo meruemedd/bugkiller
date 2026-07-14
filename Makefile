@@ -6,12 +6,14 @@ help:
 	@echo "BugKiller make targets:"
 	@echo "  setup      npm install"
 	@echo "  pull       git pull"
-	@echo "  dev        启动 Web + API + Shared"
+	@echo "  dev        启动 Web + API + Shared（纯本地，无需 GitHub）"
 	@echo "  pull-dev   git pull + 启动"
 	@echo "  stop       停止后台进程"
 	@echo "  mobile     Android/iOS 构建安装指引"
 	@echo "  logs       收集日志到 logs/"
 	@echo "  optimize   根据日志生成 proposals/"
+	@echo ""
+	@echo "本地联调可跳过 GitHub，直接: make setup && make dev"
 
 setup:
 	cd "$(ROOT)" && npm install
