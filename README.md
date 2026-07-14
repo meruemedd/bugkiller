@@ -253,6 +253,7 @@ npm run sync:projects:dry    # git 同步预览
 | `make pull-projects` | 扫描一轮：只 pull（含本仓库） |
 | `make start-fix` | 启动本仓库 + 日志收集 + 自动修复 |
 | `make auto-fix` | 仅根据日志自动修复 |
+| `make push-three` | 分别提交 Web/API/Shared 并推到 GitHub |
 | `make logs` | 收集日志 |
 | `make optimize` | 生成优化提案 |
 

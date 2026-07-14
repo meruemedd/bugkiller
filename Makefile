@@ -1,4 +1,4 @@
-.PHONY: setup pull dev pull-dev stop mobile logs optimize auto-fix start-fix watch-projects sync-projects pull-projects watch-dev help
+.PHONY: setup pull dev pull-dev stop mobile logs optimize auto-fix start-fix watch-projects sync-projects pull-projects watch-dev push-three help
 
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
