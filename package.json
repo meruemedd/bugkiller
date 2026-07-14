@@ -18,6 +18,7 @@
     "watch:projects": "node scripts/watch-and-commit.mjs",
     "sync:projects": "node scripts/watch-and-commit.mjs --once",
     "sync:projects:dry": "node scripts/watch-and-commit.mjs --once --dry-run",
+    "pull:projects": "node scripts/watch-and-commit.mjs --pull-only",
     "logs:collect": "bash scripts/collect-logs.sh",
     "optimize": "bash scripts/optimize-from-logs.sh",
     "mobile:hint": "bash scripts/mobile-hint.sh"

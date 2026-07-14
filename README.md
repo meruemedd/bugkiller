@@ -36,7 +36,8 @@
   scripts/optimize-from-logs.sh → proposals/（修复提案，人工确认后再改代码）
 
 另：多本地独立仓库可用 make watch-projects
-     → 监听各自改动 → 各自 commit / push 到各自 remote
+     → 监听各自改动 → 各自 commit / push
+     → 定时从各自 remote 自动 pull（默认含本仓库 bugkiller）
 ```
 
 ---
@@ -183,17 +184,20 @@ npm run optimize
 
 ---
 
-## 5. 监听多个本地项目 → 各自提交到各自仓库
+## 5. 多本地项目双向同步（自动 pull + 自动提交）
 
-本机若有多个独立 Git 项目，可用本工具**轮询工作区改动**，对每个项目分别 `git add` / `commit`，并（可选）`push` 到该项目自己的 remote。
+本机若有多个独立 Git 项目（**默认包含本仓库 `bugkiller`，`path: "."`**），可用本工具：
+
+1. **自动拉取**：定时 `fetch` + `pull`（默认 `--ff-only`），手机/别处推上来的更新会进电脑
+2. **自动提交**：本地有改动则 debounce 后 `add` / `commit`，并可选 `push` 回各自 remote
 
 ```bash
 cp projects.example.json projects.json
-# 编辑 projects.json：把 path 改成本机真实目录（每个 path 必须是独立 git 仓库）
-make watch-projects          # 常驻监听（推荐电脑常开）
-# 或
-npm run sync:projects        # 只扫一轮并提交
-npm run sync:projects:dry    # 预览有哪些改动，不写 Git
+# 确认 bugkiller 的 path 为 "."；其他项目改成本机真实目录
+make watch-projects          # 常驻：监听改动 + 定时 pull（推荐电脑常开）
+make pull-projects           # 只拉一轮各项目（含本仓库）
+make sync-projects           # 一轮：commit → pull → push
+npm run sync:projects:dry    # 预览，不写 Git
 ```
 
 `projects.json` 要点：
@@ -201,16 +205,21 @@ npm run sync:projects:dry    # 预览有哪些改动，不写 Git
 | 字段 | 说明 |
 |------|------|
 | `projects[].name` | 展示名（写入 commit message） |
-| `projects[].path` | 本地绝对/相对路径 |
+| `projects[].path` | 本地绝对/相对路径；本仓库用 `"."` |
 | `projects[].remote` | 默认 `origin` |
-| `projects[].branch` | 可选；不填则用当前分支 |
+| `projects[].branch` | 可选；不填则用当前分支（本仓库示例为 `main`） |
+| `projects[].autoPull` | 是否自动 pull；可覆盖全局 `autoPull`（默认 true） |
 | `projects[].autoPush` | 是否 push；可覆盖全局 `autoPush` |
 | `debounceMs` | 停止改动后多久再提交，默认 8000 |
-| `pollIntervalMs` | 轮询间隔，默认 3000 |
+| `pollIntervalMs` | 本地改动轮询间隔，默认 3000 |
+| `pullIntervalMs` | 自动 pull 间隔，默认 60000 |
+| `pullMode` | `ff-only`（默认）或 `rebase` |
+
+同步顺序（每个项目）：有本地改动先 commit → pull → 若仍领先再 push。工作区脏且无法先提交时会跳过 pull，避免覆盖未保存改动。
 
 日志追加到 `logs/watch-commit.log`。本机路径配置勿提交：`projects.json` 已在 `.gitignore`。
 
-> 注意：`apps/web` / `apps/api` / `packages/shared` 是**同一 monorepo**，不是三个独立仓库。要「各自推仓库」请在 `projects.json` 里填写真正独立的本地 Git 目录。
+> 注意：`apps/web` / `apps/api` / `packages/shared` 是**同一 monorepo**，不是三个独立仓库。额外业务项目请在 `projects.json` 里另填真正独立的本地 Git 目录。
 
 ---
 
@@ -230,8 +239,9 @@ npm run sync:projects:dry    # 预览有哪些改动，不写 Git
 | `make pull-dev` | pull + 启动 |
 | `make stop` | 停止后台进程 |
 | `make mobile` | Android/iOS 指引 |
-| `make watch-projects` | 监听多本地项目并各自 commit/push |
-| `make sync-projects` | 扫描一轮并提交 |
+| `make watch-projects` | 常驻：多项目 commit/push + 定时 pull |
+| `make sync-projects` | 扫描一轮：commit → pull → push |
+| `make pull-projects` | 扫描一轮：只 pull（含本仓库） |
 | `make logs` | 收集日志 |
 | `make optimize` | 生成优化提案 |
 
