@@ -35,9 +35,10 @@
         ↓
   scripts/optimize-from-logs.sh → proposals/（修复提案，人工确认后再改代码）
 
-另：多本地独立仓库可用 make watch-projects
+另：多本地独立仓库可用 make watch-dev
      → 监听各自改动 → 各自 commit / push
      → 定时从各自 remote 自动 pull（默认含本仓库 bugkiller）
+     → 启动本仓库 Web/API/Shared，并根据日志自动修复
 ```
 
 ---
@@ -178,48 +179,55 @@ npm run optimize
 
 | 能自动做的 | 需人工确认的 |
 |------------|--------------|
-| 启停服务、聚合日志、生成修复提案 | 真正改业务代码并提交 |
-| 在提案中标出可疑文件与可能原因 | 选择采用哪条修复方案 |
-| CI 上跑基础语法/安装检查 | 合并 PR、发布应用商店 |
+| 启停服务、聚合日志、规则引擎自动修复（缺依赖/端口/演示 boom/崩溃重启） | 复杂业务逻辑改动 |
+| 生成修复提案到 `proposals/` | 采用提案中非常规方案并合并发布 |
+| `make watch-dev` 同步 + 启动 + 修复闭环 | 应用商店发布 |
 
 ---
 
-## 5. 多本地项目双向同步（自动 pull + 自动提交）
+## 5. 多本地项目双向同步 + 启动 + 自动修复
 
 本机若有多个独立 Git 项目（**默认包含本仓库 `bugkiller`，`path: "."`**），可用本工具：
 
-1. **自动拉取**：定时 `fetch` + `pull`（默认 `--ff-only`），手机/别处推上来的更新会进电脑
-2. **自动提交**：本地有改动则 debounce 后 `add` / `commit`，并可选 `push` 回各自 remote
+1. **自动拉取**：定时 `fetch` + `pull`（默认 `--ff-only`）
+2. **自动提交**：本地有改动则 debounce 后 `add` / `commit`，并可选 `push`
+3. **自动启动**：拉取/启动后确保本仓库 Web + API + Shared 在跑（`scripts/dev-all.sh`）
+4. **自动修复**：收集日志后应用可安全的规则修复，并生成 `proposals/latest.md`
 
 ```bash
 cp projects.example.json projects.json
-# 确认 bugkiller 的 path 为 "."；其他项目改成本机真实目录
-make watch-projects          # 常驻：监听改动 + 定时 pull（推荐电脑常开）
-make pull-projects           # 只拉一轮各项目（含本仓库）
-make sync-projects           # 一轮：commit → pull → push
-npm run sync:projects:dry    # 预览，不写 Git
+# 默认 autoStart/autoFix 已开；确认 bugkiller path 为 "."
+make watch-dev               # 推荐：常驻同步 + 启动 + 自动修复
+make start-fix              # 只启动本仓库并修复一轮（不常驻）
+make auto-fix                # 仅根据当前 logs/ 修复
+make pull-projects           # 只拉一轮各项目
+npm run sync:projects:dry    # git 同步预览
 ```
+
+**自动修复合规范围（规则引擎，非任意改业务）：**
+
+| 日志信号 | 自动动作 |
+|----------|----------|
+| 缺依赖 / MODULE_NOT_FOUND | `npm install` 后重启 |
+| 端口占用 EADDRINUSE | `make stop` 后重启 |
+| 演示 `/api/boom` 错误 | 写入 `.env` `ALLOW_DEMO_BOOM=0` 并重启 |
+| 进程 uncaught / crash | 重启开发服务 |
+| 其他错误 | 只写入 `proposals/latest.md`，不擅自大改代码 |
 
 `projects.json` 要点：
 
 | 字段 | 说明 |
 |------|------|
-| `projects[].name` | 展示名（写入 commit message） |
-| `projects[].path` | 本地绝对/相对路径；本仓库用 `"."` |
-| `projects[].remote` | 默认 `origin` |
-| `projects[].branch` | 可选；不填则用当前分支（本仓库示例为 `main`） |
-| `projects[].autoPull` | 是否自动 pull；可覆盖全局 `autoPull`（默认 true） |
-| `projects[].autoPush` | 是否 push；可覆盖全局 `autoPush` |
-| `debounceMs` | 停止改动后多久再提交，默认 8000 |
-| `pollIntervalMs` | 本地改动轮询间隔，默认 3000 |
+| `projects[].path` | 本仓库用 `"."` |
+| `autoPull` / `autoPush` | 全局或按项目控制 pull/push |
+| `autoStart` / `autoFix` | 开启启动与自动修复（示例默认 true） |
 | `pullIntervalMs` | 自动 pull 间隔，默认 60000 |
+| `fixIntervalMs` | 启动检查/自动修复间隔，默认 120000 |
 | `pullMode` | `ff-only`（默认）或 `rebase` |
 
-同步顺序（每个项目）：有本地改动先 commit → pull → 若仍领先再 push。工作区脏且无法先提交时会跳过 pull，避免覆盖未保存改动。
+同步顺序：有本地改动先 commit → pull → push；随后对启用了 `autoStart`/`autoFix` 的本仓库跑 `start-and-fix`。
 
-日志追加到 `logs/watch-commit.log`。本机路径配置勿提交：`projects.json` 已在 `.gitignore`。
-
-> 注意：`apps/web` / `apps/api` / `packages/shared` 是**同一 monorepo**，不是三个独立仓库。额外业务项目请在 `projects.json` 里另填真正独立的本地 Git 目录。
+日志：`logs/watch-commit.log`、`logs/auto-fix-latest.log`。`projects.json` 已 gitignore。
 
 ---
 
@@ -240,8 +248,11 @@ npm run sync:projects:dry    # 预览，不写 Git
 | `make stop` | 停止后台进程 |
 | `make mobile` | Android/iOS 指引 |
 | `make watch-projects` | 常驻：多项目 commit/push + 定时 pull |
+| `make watch-dev` | 常驻：git 同步 + 启动本仓库并自动修复 |
 | `make sync-projects` | 扫描一轮：commit → pull → push |
 | `make pull-projects` | 扫描一轮：只 pull（含本仓库） |
+| `make start-fix` | 启动本仓库 + 日志收集 + 自动修复 |
+| `make auto-fix` | 仅根据日志自动修复 |
 | `make logs` | 收集日志 |
 | `make optimize` | 生成优化提案 |
 

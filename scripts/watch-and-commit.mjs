@@ -3,12 +3,14 @@
  * 多本地 Git 项目双向同步：
  *   1) 工作区有改动 → 各自 commit（可选 push）
  *   2) 定期从各自 remote 自动 pull 更新（含本仓库）
+ *   3) 可选：启动本仓库 Web/API/Shared，并根据日志自动修复
  *
  * 用法:
  *   node scripts/watch-and-commit.mjs                # 常驻：监听改动 + 定时 pull
  *   node scripts/watch-and-commit.mjs --once         # 扫一轮：commit → pull → push
  *   node scripts/watch-and-commit.mjs --pull-only    # 只拉取，不 commit/push 本地改动
  *   node scripts/watch-and-commit.mjs --dry-run      # 只打印
+ *   node scripts/watch-and-commit.mjs --with-dev     # 同步后启动项目并自动修复
  *   node scripts/watch-and-commit.mjs --config path
  */
 import { spawnSync } from "node:child_process";
@@ -31,6 +33,7 @@ const args = new Set(argv);
 const once = args.has("--once");
 const dryRun = args.has("--dry-run");
 const pullOnly = args.has("--pull-only");
+const withDev = args.has("--with-dev");
 const configArgIdx = argv.indexOf("--config");
 const configPath =
   configArgIdx >= 0 && argv[configArgIdx + 1]
@@ -76,6 +79,10 @@ function loadConfig() {
       Number(raw.pullIntervalMs) > 0 ? Number(raw.pullIntervalMs) : 60000,
     autoPush: raw.autoPush !== false,
     autoPull: raw.autoPull !== false,
+    autoStart: raw.autoStart === true || withDev,
+    autoFix: raw.autoFix === true || withDev,
+    fixIntervalMs:
+      Number(raw.fixIntervalMs) > 0 ? Number(raw.fixIntervalMs) : 120000,
     pullMode,
     commitMessage:
       typeof raw.commitMessage === "string" && raw.commitMessage.trim()
@@ -396,6 +403,28 @@ function syncProject(project, defaults, { commit = true, pull = true, push = tru
   return result;
 }
 
+function runDevFix(reason) {
+  if (dryRun) {
+    console.log(`[watch-and-commit] dry-run skip start-and-fix (${reason})`);
+    return;
+  }
+  console.log(`[watch-and-commit] 启动项目并自动修复 (${reason}) …`);
+  const r = spawnSync("bash", [join(ROOT, "scripts/start-and-fix.sh")], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: process.env,
+    stdio: "inherit",
+  });
+  if (r.status !== 0) {
+    console.error(`[watch-and-commit] start-and-fix 退出码 ${r.status}`);
+    appendLog(
+      `${new Date().toISOString()} DEVFIX_FAIL status=${r.status} ${reason}`
+    );
+  } else {
+    appendLog(`${new Date().toISOString()} DEVFIX_OK ${reason}`);
+  }
+}
+
 function normalizeProjects(config) {
   return config.projects.map((p, i) => {
     if (!p || typeof p !== "object" || !p.path) {
@@ -408,6 +437,8 @@ function normalizeProjects(config) {
       branch: p.branch,
       autoPush: p.autoPush,
       autoPull: p.autoPull,
+      autoStart: p.autoStart,
+      autoFix: p.autoFix,
       enabled: p.enabled,
       commitMessage: p.commitMessage,
       pullMode: p.pullMode,
@@ -443,9 +474,16 @@ async function main() {
     }
   };
 
+  const wantDev =
+    config.autoStart ||
+    config.autoFix ||
+    projects.some((p) => p.autoStart || p.autoFix);
+
   if (once || pullOnly) {
-    // pull-only with --once semantics: single pass
     runOnce();
+    if (wantDev) {
+      runDevFix(pullOnly ? "pull-only" : "once");
+    }
     return;
   }
 
@@ -461,7 +499,6 @@ async function main() {
       setTimeout(() => {
         timers.delete(key);
         try {
-          // commit (+ push) for this project; also pull while we're at it
           syncProject(project, config);
         } catch (err) {
           console.error(`[${key}] 未捕获错误:`, err);
@@ -472,10 +509,15 @@ async function main() {
 
   // 启动立刻同步一轮（含 pull）
   runOnce();
+  if (wantDev) {
+    runDevFix("startup");
+  }
 
   console.log(
     `[watch-and-commit] 正在监听 ${projects.length} 个本地项目` +
-      `（改动自动提交；每 ${config.pullIntervalMs}ms 自动拉取；Ctrl+C 退出）…`
+      `（改动自动提交；每 ${config.pullIntervalMs}ms 自动拉取` +
+      (wantDev ? `；每 ${config.fixIntervalMs}ms 启动检查/自动修复` : "") +
+      `；Ctrl+C 退出）…`
   );
 
   setInterval(() => {
@@ -492,14 +534,37 @@ async function main() {
   setInterval(() => {
     for (const p of projects) {
       if (p.enabled === false) continue;
-      // 定时只做 pull（工作区干净时）；若有本地脏文件留给 commit 轮询处理
       try {
-        syncProject(p, config, { commit: false, pull: true, push: false });
+        const result = syncProject(p, config, {
+          commit: false,
+          pull: true,
+          push: false,
+        });
+        if (
+          wantDev &&
+          result?.pull?.pulled &&
+          (p.autoStart ||
+            p.autoFix ||
+            config.autoStart ||
+            config.autoFix)
+        ) {
+          runDevFix(`after-pull:${p.name}`);
+        }
       } catch (err) {
         console.error(`[${p.name}] pull 轮询错误:`, err);
       }
     }
   }, config.pullIntervalMs);
+
+  if (wantDev) {
+    setInterval(() => {
+      try {
+        runDevFix("interval");
+      } catch (err) {
+        console.error("[watch-and-commit] fix 轮询错误:", err);
+      }
+    }, config.fixIntervalMs);
+  }
 }
 
 main().catch((err) => {
