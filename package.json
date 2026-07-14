@@ -20,6 +20,7 @@
     "sync:projects": "node scripts/watch-and-commit.mjs --once",
     "sync:projects:dry": "node scripts/watch-and-commit.mjs --once --dry-run",
     "pull:projects": "node scripts/watch-and-commit.mjs --pull-only",
+    "discover:esim": "bash scripts/discover-esim.sh --write",
     "push:three": "bash scripts/push-three-projects.sh",
     "start:fix": "bash scripts/start-and-fix.sh",
     "auto:fix": "bash scripts/auto-fix.sh",

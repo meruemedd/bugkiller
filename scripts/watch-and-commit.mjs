@@ -71,7 +71,14 @@ function loadConfig() {
       ? raw.pullMode
       : "ff-only";
 
+  const envRoot = process.env.ESIM_ROOT || process.env.PROJECTS_ROOT || "";
+  const projectsRootRaw =
+    typeof raw.projectsRoot === "string" && raw.projectsRoot.trim()
+      ? raw.projectsRoot.trim()
+      : envRoot;
+
   return {
+    projectsRoot: projectsRootRaw,
     debounceMs: Number(raw.debounceMs) > 0 ? Number(raw.debounceMs) : 8000,
     pollIntervalMs:
       Number(raw.pollIntervalMs) > 0 ? Number(raw.pollIntervalMs) : 3000,
@@ -92,8 +99,16 @@ function loadConfig() {
   };
 }
 
-function resolveProjectPath(p) {
-  const abs = isAbsolute(p) ? p : resolve(ROOT, p);
+function resolveBase(projectsRoot) {
+  if (!projectsRoot) return ROOT;
+  return isAbsolute(projectsRoot)
+    ? projectsRoot
+    : resolve(ROOT, projectsRoot);
+}
+
+function resolveProjectPath(p, projectsRoot = "") {
+  const base = resolveBase(projectsRoot);
+  const abs = isAbsolute(p) ? p : resolve(base, p);
   if (!existsSync(abs)) return { abs, error: `路径不存在: ${abs}` };
   try {
     return { abs: realpathSync(abs) };
@@ -343,7 +358,10 @@ function pushRemote(name, abs, remote, branch) {
 
 function syncProject(project, defaults, { commit = true, pull = true, push = true } = {}) {
   const name = project.name || project.path;
-  const { abs, error: pathError } = resolveProjectPath(project.path);
+  const { abs, error: pathError } = resolveProjectPath(
+    project.path,
+    defaults.projectsRoot
+  );
   if (pathError) {
     console.warn(`[${name}] 跳过: ${pathError}`);
     return { name, skipped: true, reason: pathError };
@@ -454,6 +472,7 @@ async function main() {
   console.log(
     `[watch-and-commit] 配置=${configPath}` +
       ` 项目=${projects.length}` +
+      (config.projectsRoot ? ` root=${resolveBase(config.projectsRoot)}` : "") +
       ` debounce=${config.debounceMs}ms` +
       ` poll=${config.pollIntervalMs}ms` +
       ` pullEvery=${config.pullIntervalMs}ms` +
@@ -523,7 +542,7 @@ async function main() {
   setInterval(() => {
     for (const p of projects) {
       if (p.enabled === false) continue;
-      const { abs, error } = resolveProjectPath(p.path);
+      const { abs, error } = resolveProjectPath(p.path, config.projectsRoot);
       if (error) continue;
       if (!ensureGitRepo(abs)) continue;
       const st = statusPorcelain(abs);

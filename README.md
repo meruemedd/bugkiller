@@ -35,10 +35,9 @@
         ↓
   scripts/optimize-from-logs.sh → proposals/（修复提案，人工确认后再改代码）
 
-另：多本地独立仓库可用 make watch-dev
-     → 监听各自改动 → 各自 commit / push
-     → 定时从各自 remote 自动 pull（默认含本仓库 bugkiller）
-     → 启动本仓库 Web/API/Shared，并根据日志自动修复
+另：电脑端监听 ESIM_B / ESIM_A / ESIM_I 三个本地工程
+     → make discover-esim && make watch-projects
+     → 各自改动自动 commit/push，并定时从各自 remote pull
 ```
 
 ---
@@ -185,26 +184,55 @@ npm run optimize
 
 ---
 
-## 5. 多本地项目双向同步 + 启动 + 自动修复
+## 5. 监听 ESIM_B / ESIM_A / ESIM_I（电脑端）
 
-本机若有多个独立 Git 项目（**默认包含本仓库 `bugkiller`，`path: "."`**），可用本工具：
+本工具默认监听你电脑上的三个独立 Git 工程（**不是**本 monorepo 里的 web/api/shared，也**不需要**新建空仓库）：
 
-1. **自动拉取**：定时 `fetch` + `pull`（默认 `--ff-only`）
-2. **自动提交**：本地有改动则 debounce 后 `add` / `commit`，并可选 `push`
-3. **自动启动**：拉取/启动后确保本仓库 Web + API + Shared 在跑（`scripts/dev-all.sh`）
-4. **自动修复**：收集日志后应用可安全的规则修复，并生成 `proposals/latest.md`
+| 项目 | 说明 |
+|------|------|
+| **ESIM_B** | 本机目录名 `ESIM_B`，推送到它自己的 GitHub remote |
+| **ESIM_A** | 本机目录名 `ESIM_A`，推送到它自己的 GitHub remote |
+| **ESIM_I** | 本机目录名 `ESIM_I`，推送到它自己的 GitHub remote |
 
 ```bash
-cp projects.example.json projects.json
-# 默认 autoStart/autoFix 已开；确认 bugkiller path 为 "."
-make watch-dev               # 推荐：常驻同步 + 启动 + 自动修复
-make start-fix              # 只启动本仓库并修复一轮（不常驻）
-make auto-fix                # 仅根据当前 logs/ 修复
-make pull-projects           # 只拉一轮各项目
-npm run sync:projects:dry    # git 同步预览
+# 1) 自动发现本机三个目录并生成 projects.json
+make discover-esim
+# 若目录不在常见位置，指定父目录：
+# ESIM_ROOT=/你的/父目录 make discover-esim
+
+# 2) 常驻监听：有改动则各自 commit/push，并定时 pull
+make watch-projects
+
+# 或只跑一轮分别提交到各自 GitHub
+make push-three
+# 等同: make sync-projects
 ```
 
-**自动修复合规范围（规则引擎，非任意改业务）：**
+也可手写 `projects.json`（可先 `cp projects.example.json projects.json`）：
+
+```json
+{
+  "projectsRoot": "/你的/父目录",
+  "autoPull": true,
+  "autoPush": true,
+  "projects": [
+    { "name": "ESIM_B", "path": "ESIM_B", "remote": "origin", "enabled": true },
+    { "name": "ESIM_A", "path": "ESIM_A", "remote": "origin", "enabled": true },
+    { "name": "ESIM_I", "path": "ESIM_I", "remote": "origin", "enabled": true }
+  ]
+}
+```
+
+每个工程必须本身已是 Git 仓库（含 `.git`），并且 `origin` 已指向各自的 GitHub 仓库。BugKiller 只负责监听与同步，不会替你新建远程仓库。
+
+可选：对本仓库（bugkiller）另开启动与规则修复：
+
+```bash
+make watch-dev     # 同步配置项目 + 启动本仓库并 auto-fix
+make start-fix
+```
+
+**自动修复范围（仅本仓库服务）：**
 
 | 日志信号 | 自动动作 |
 |----------|----------|
@@ -212,22 +240,9 @@ npm run sync:projects:dry    # git 同步预览
 | 端口占用 EADDRINUSE | `make stop` 后重启 |
 | 演示 `/api/boom` 错误 | 写入 `.env` `ALLOW_DEMO_BOOM=0` 并重启 |
 | 进程 uncaught / crash | 重启开发服务 |
-| 其他错误 | 只写入 `proposals/latest.md`，不擅自大改代码 |
+| 其他错误 | 只写入 `proposals/latest.md` |
 
-`projects.json` 要点：
-
-| 字段 | 说明 |
-|------|------|
-| `projects[].path` | 本仓库用 `"."` |
-| `autoPull` / `autoPush` | 全局或按项目控制 pull/push |
-| `autoStart` / `autoFix` | 开启启动与自动修复（示例默认 true） |
-| `pullIntervalMs` | 自动 pull 间隔，默认 60000 |
-| `fixIntervalMs` | 启动检查/自动修复间隔，默认 120000 |
-| `pullMode` | `ff-only`（默认）或 `rebase` |
-
-同步顺序：有本地改动先 commit → pull → push；随后对启用了 `autoStart`/`autoFix` 的本仓库跑 `start-and-fix`。
-
-日志：`logs/watch-commit.log`、`logs/auto-fix-latest.log`。`projects.json` 已 gitignore。
+`projects.json` 已 gitignore。日志见 `logs/watch-commit.log`。
 
 ---
 
@@ -247,13 +262,13 @@ npm run sync:projects:dry    # git 同步预览
 | `make pull-dev` | pull + 启动 |
 | `make stop` | 停止后台进程 |
 | `make mobile` | Android/iOS 指引 |
-| `make watch-projects` | 常驻：多项目 commit/push + 定时 pull |
-| `make watch-dev` | 常驻：git 同步 + 启动本仓库并自动修复 |
-| `make sync-projects` | 扫描一轮：commit → pull → push |
-| `make pull-projects` | 扫描一轮：只 pull（含本仓库） |
+| `make discover-esim` | 发现本机 ESIM_B/A/I 并写 projects.json |
+| `make watch-projects` | 常驻监听三项目：commit/push + pull |
+| `make sync-projects` / `make push-three` | 一轮分别提交三项目到各自 GitHub |
+| `make pull-projects` | 一轮只 pull 三项目 |
+| `make watch-dev` | 同步 + 启动本仓库并自动修复 |
 | `make start-fix` | 启动本仓库 + 日志收集 + 自动修复 |
 | `make auto-fix` | 仅根据日志自动修复 |
-| `make push-three` | 分别提交 Web/API/Shared 并推到 GitHub |
 | `make logs` | 收集日志 |
 | `make optimize` | 生成优化提案 |
 

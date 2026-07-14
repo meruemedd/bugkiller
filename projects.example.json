@@ -1,29 +1,19 @@
 {
+  "projectsRoot": "../",
   "debounceMs": 8000,
   "pollIntervalMs": 3000,
   "pullIntervalMs": 60000,
   "fixIntervalMs": 120000,
   "autoPull": true,
   "autoPush": true,
-  "autoStart": true,
-  "autoFix": true,
+  "autoStart": false,
+  "autoFix": false,
   "pullMode": "ff-only",
   "commitMessage": "chore(auto): sync {name} @ {time}",
   "projects": [
     {
-      "name": "bugkiller",
-      "path": ".",
-      "remote": "origin",
-      "branch": "main",
-      "autoPull": true,
-      "autoPush": true,
-      "autoStart": true,
-      "autoFix": true,
-      "enabled": true
-    },
-    {
-      "name": "example-web",
-      "path": "../my-web-app",
+      "name": "ESIM_B",
+      "path": "ESIM_B",
       "remote": "origin",
       "branch": "main",
       "autoPull": true,
@@ -31,8 +21,17 @@
       "enabled": true
     },
     {
-      "name": "example-api",
-      "path": "../my-api",
+      "name": "ESIM_A",
+      "path": "ESIM_A",
+      "remote": "origin",
+      "branch": "main",
+      "autoPull": true,
+      "autoPush": true,
+      "enabled": true
+    },
+    {
+      "name": "ESIM_I",
+      "path": "ESIM_I",
       "remote": "origin",
       "branch": "main",
       "autoPull": true,
