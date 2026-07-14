@@ -1,17 +1,19 @@
-.PHONY: setup pull dev pull-dev stop mobile logs optimize help
+.PHONY: setup pull dev pull-dev stop mobile logs optimize watch-projects sync-projects help
 
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 help:
 	@echo "BugKiller make targets:"
-	@echo "  setup      npm install"
-	@echo "  pull       git pull"
-	@echo "  dev        启动 Web + API + Shared（纯本地，无需 GitHub）"
-	@echo "  pull-dev   git pull + 启动"
-	@echo "  stop       停止后台进程"
-	@echo "  mobile     Android/iOS 构建安装指引"
-	@echo "  logs       收集日志到 logs/"
-	@echo "  optimize   根据日志生成 proposals/"
+	@echo "  setup           npm install"
+	@echo "  pull            git pull"
+	@echo "  dev             启动 Web + API + Shared（纯本地，无需 GitHub）"
+	@echo "  pull-dev        git pull + 启动"
+	@echo "  stop            停止后台进程"
+	@echo "  mobile          Android/iOS 构建安装指引"
+	@echo "  watch-projects  监听本地多项目，有改动则各自 commit/push"
+	@echo "  sync-projects   扫描一轮本地多项目并提交（不常驻）"
+	@echo "  logs            收集日志到 logs/"
+	@echo "  optimize        根据日志生成 proposals/"
 	@echo ""
 	@echo "本地联调可跳过 GitHub，直接: make setup && make dev"
 
@@ -38,3 +40,9 @@ logs:
 
 optimize:
 	cd "$(ROOT)" && bash scripts/optimize-from-logs.sh
+
+watch-projects:
+	cd "$(ROOT)" && node scripts/watch-and-commit.mjs
+
+sync-projects:
+	cd "$(ROOT)" && node scripts/watch-and-commit.mjs --once

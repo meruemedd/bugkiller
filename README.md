@@ -34,6 +34,9 @@
   scripts/collect-logs.sh → logs/
         ↓
   scripts/optimize-from-logs.sh → proposals/（修复提案，人工确认后再改代码）
+
+另：多本地独立仓库可用 make watch-projects
+     → 监听各自改动 → 各自 commit / push 到各自 remote
 ```
 
 ---
@@ -180,7 +183,38 @@ npm run optimize
 
 ---
 
-## 5. GitHub Actions（基础 CI）
+## 5. 监听多个本地项目 → 各自提交到各自仓库
+
+本机若有多个独立 Git 项目，可用本工具**轮询工作区改动**，对每个项目分别 `git add` / `commit`，并（可选）`push` 到该项目自己的 remote。
+
+```bash
+cp projects.example.json projects.json
+# 编辑 projects.json：把 path 改成本机真实目录（每个 path 必须是独立 git 仓库）
+make watch-projects          # 常驻监听（推荐电脑常开）
+# 或
+npm run sync:projects        # 只扫一轮并提交
+npm run sync:projects:dry    # 预览有哪些改动，不写 Git
+```
+
+`projects.json` 要点：
+
+| 字段 | 说明 |
+|------|------|
+| `projects[].name` | 展示名（写入 commit message） |
+| `projects[].path` | 本地绝对/相对路径 |
+| `projects[].remote` | 默认 `origin` |
+| `projects[].branch` | 可选；不填则用当前分支 |
+| `projects[].autoPush` | 是否 push；可覆盖全局 `autoPush` |
+| `debounceMs` | 停止改动后多久再提交，默认 8000 |
+| `pollIntervalMs` | 轮询间隔，默认 3000 |
+
+日志追加到 `logs/watch-commit.log`。本机路径配置勿提交：`projects.json` 已在 `.gitignore`。
+
+> 注意：`apps/web` / `apps/api` / `packages/shared` 是**同一 monorepo**，不是三个独立仓库。要「各自推仓库」请在 `projects.json` 里填写真正独立的本地 Git 目录。
+
+---
+
+## 6. GitHub Actions（基础 CI）
 
 `.github/workflows/ci.yml`：在 push / PR 时 `npm install` + 对三个工作区做 build 脚本。
 
@@ -196,6 +230,8 @@ npm run optimize
 | `make pull-dev` | pull + 启动 |
 | `make stop` | 停止后台进程 |
 | `make mobile` | Android/iOS 指引 |
+| `make watch-projects` | 监听多本地项目并各自 commit/push |
+| `make sync-projects` | 扫描一轮并提交 |
 | `make logs` | 收集日志 |
 | `make optimize` | 生成优化提案 |
 

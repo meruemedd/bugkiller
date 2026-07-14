@@ -19,6 +19,9 @@ out/
 *.pem
 credentials.json
 
+# Local multi-project sync (may contain absolute machine paths)
+projects.json
+
 # Logs (keep directory via .gitkeep)
 logs/*
 !logs/.gitkeep
