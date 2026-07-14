@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application
+        android:label="BugKiller"
+        android:usesCleartextTraffic="true">
+        <!-- 完整 Activity 声明请在 Android Studio 新建工程后合并 -->
+    </application>
+</manifest>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BugKiller Web</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/config.js"></script>
+  </head>
+  <body>
+    <main>
+      <p class="brand">BugKiller</p>
+      <h1>本地三项目联调</h1>
+      <p class="sub">Web ↔ API ↔ Shared。也可联动 Android / iOS 客户端。</p>
+      <div class="actions">
+        <button id="btn-ping" type="button">请求 /api/ping</button>
+        <button id="btn-boom" type="button" class="danger">触发演示报错</button>
+      </div>
+      <pre id="out">等待操作…</pre>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

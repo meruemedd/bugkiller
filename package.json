@@ -1,0 +1,25 @@
+{
+  "name": "bugkiller",
+  "private": true,
+  "version": "0.1.0",
+  "description": "BugKiller 端到端研发工作流：Web + API + Shared，以及 Android/iOS 客户端骨架",
+  "workspaces": [
+    "apps/web",
+    "apps/api",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "bash scripts/dev-all.sh",
+    "dev:web": "npm run dev -w @bugkiller/web",
+    "dev:api": "npm run dev -w @bugkiller/api",
+    "dev:shared": "npm run build -w @bugkiller/shared -- --watch",
+    "build": "npm run build -w @bugkiller/shared && npm run build -w @bugkiller/api && npm run build -w @bugkiller/web",
+    "pull:dev": "bash scripts/pull-and-dev.sh",
+    "logs:collect": "bash scripts/collect-logs.sh",
+    "optimize": "bash scripts/optimize-from-logs.sh",
+    "mobile:hint": "bash scripts/mobile-hint.sh"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
