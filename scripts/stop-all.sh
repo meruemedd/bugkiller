@@ -11,7 +11,9 @@ else
   while read -r pid; do
     [[ -z "${pid:-}" ]] && continue
     if kill -0 "$pid" 2>/dev/null; then
-      echo "[stop-all] kill $pid"
+      echo "[stop-all] kill $pid (含子进程)"
+      # npm run / node --watch 常把真正监听进程放在子树里
+      pkill -P "$pid" 2>/dev/null || true
       kill "$pid" 2>/dev/null || true
     fi
   done < "$PID_FILE"

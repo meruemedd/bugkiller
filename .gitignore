@@ -56,8 +56,8 @@ ios/**/*.xcworkspace/xcuserdata/
 *.dSYM
 
 # Optimizer proposals (generated)
-proposals/
-!.gitkeep
+proposals/*
+!proposals/.gitkeep
 
 # Misc
 coverage/

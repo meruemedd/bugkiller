@@ -15,8 +15,8 @@ fi
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="proposals/${STAMP}-proposal.md"
 
-# 抽取关键行
-ERRORS="$(grep -E -i 'error|exception|fail|uncaught|boom' "$COMBINED" 2>/dev/null | head -n 80 || true)"
+# 抽取关键行（排除 collect 脚本里的 iOS 指引假阳性）
+ERRORS="$(grep -E -i 'error|exception|fail|uncaught|boom' "$COMBINED" 2>/dev/null | grep -Ev 'xcrun simctl|iOS / Xcode' | head -n 80 || true)"
 if [[ -z "${ERRORS}" ]]; then
   ERRORS="（未在合并日志中匹配到明显 error 行。可先打开 Web 点击「触发演示报错」，再 make logs。）"
 fi

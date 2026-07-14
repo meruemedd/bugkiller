@@ -17,22 +17,36 @@ const mime = {
   ".svg": "image/svg+xml",
 };
 
+function isInsideRoot(filePath) {
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(filePath);
+  return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
+}
+
 const server = http.createServer((req, res) => {
   try {
-    const reqPath = (req.url || "/").split("?")[0];
+    const reqPath = decodeURIComponent((req.url || "/").split("?")[0]);
     if (reqPath === "/config.js") {
       res.writeHead(200, { "Content-Type": "text/javascript; charset=utf-8" });
       res.end(`window.__BUGKILLER__ = ${JSON.stringify({ apiBase, app: APP_NAME })};`);
       return;
     }
 
-    let filePath = path.join(root, reqPath === "/" ? "index.html" : reqPath);
-    if (!filePath.startsWith(root)) {
+    // 只映射站内相对路径；带扩展名的资源缺失时返回 404（避免把 JS/CSS 误成 HTML）
+    const relative = reqPath === "/" ? "index.html" : reqPath.replace(/^\/+/, "");
+    let filePath = path.resolve(root, relative);
+    if (!isInsideRoot(filePath)) {
       res.writeHead(403);
       res.end("forbidden");
       return;
     }
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      const hasExt = path.extname(relative) !== "";
+      if (hasExt) {
+        res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end("not found");
+        return;
+      }
       filePath = path.join(root, "index.html");
     }
     const ext = path.extname(filePath);
