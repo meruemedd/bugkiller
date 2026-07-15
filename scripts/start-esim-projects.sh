@@ -17,9 +17,13 @@ for arg in "$@"; do
 done
 
 CONFIG="$ROOT/projects.json"
+if [[ ! -f "$CONFIG" && -f "$ROOT/projects.esim.json" ]]; then
+  echo "[start-esim] 使用 projects.esim.json → projects.json"
+  cp "$ROOT/projects.esim.json" "$CONFIG"
+fi
 if [[ ! -f "$CONFIG" ]]; then
   echo "[start-esim] 缺少 projects.json，先 discover…"
-  bash "$ROOT/scripts/discover-esim.sh" --write
+  ESIM_ROOT="${ESIM_ROOT:-/Users/air/Documents/code/ESIM}" bash "$ROOT/scripts/discover-esim.sh" --write
 fi
 
 if [[ "$RESTART" == "1" ]]; then
