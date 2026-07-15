@@ -221,7 +221,7 @@ make collab
 |------|----------|
 | ESIM_A | `/Users/air/Documents/code/ESIM/ESIM_A`（已确认） |
 | ESIM_B | `/Users/air/Documents/code/ESIM/ESIM_B`（已确认） |
-| ESIM_I | `/Users/air/Documents/code/ESIM/ESIM_I`（同级推断） |
+| ESIM_I | `/Users/air/Documents/code/ESIM/ESIM_I`（已确认） |
 
 ```bash
 cp projects.esim.json projects.json   # 或直接 make collab（会自动选用）
