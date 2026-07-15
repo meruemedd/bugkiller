@@ -35,9 +35,9 @@
         ↓
   scripts/optimize-from-logs.sh → proposals/（修复提案，人工确认后再改代码）
 
-另：电脑端监听 ESIM_B / ESIM_A / ESIM_I 三个本地工程
-     → make discover-esim && make watch-projects
-     → 各自改动自动 commit/push，并定时从各自 remote pull
+另：电脑端与手机协作三工程 ESIM_B / ESIM_A / ESIM_I
+     → make collab
+     → pull 手机改动 → 启动联调 → 本地改动自动 commit/push
 ```
 
 ---
@@ -184,65 +184,71 @@ npm run optimize
 
 ---
 
-## 5. 监听 ESIM_B / ESIM_A / ESIM_I（电脑端）
+## 5. 电脑端协作：ESIM_B / ESIM_A / ESIM_I
 
-本工具默认监听你电脑上的三个独立 Git 工程（**不是**本 monorepo 里的 web/api/shared，也**不需要**新建空仓库）：
+目标：**手机改代码推 GitHub ↔ 电脑拉取、启动联调、改完再推回**，三工程各自进各自的 GitHub 仓库。
 
-| 项目 | 说明 |
-|------|------|
-| **ESIM_B** | 本机目录名 `ESIM_B`，推送到它自己的 GitHub remote |
-| **ESIM_A** | 本机目录名 `ESIM_A`，推送到它自己的 GitHub remote |
-| **ESIM_I** | 本机目录名 `ESIM_I`，推送到它自己的 GitHub remote |
-
-```bash
-# 1) 自动发现本机三个目录并生成 projects.json
-make discover-esim
-# 若目录不在常见位置，指定父目录：
-# ESIM_ROOT=/你的/父目录 make discover-esim
-
-# 2) 常驻监听：有改动则各自 commit/push，并定时 pull
-make watch-projects
-
-# 或只跑一轮分别提交到各自 GitHub
-make push-three
-# 等同: make sync-projects
+```text
+[手机] Working Copy / GitHub App
+   编辑 ESIM_B 或 ESIM_A 或 ESIM_I → Commit → Push
+                    ↓
+              [GitHub 各自仓库]
+                    ↓
+[电脑] make collab
+   ① discover 三个目录
+   ② 各自 git pull（拿到手机改动）
+   ③ 启动三项目联调（B 后端 / A 安卓 / I iOS）
+   ④ 常驻：本地改动 → 各自 commit/push
+                    ↓
+[手机] Pull 即可拿到电脑改动
 ```
 
-也可手写 `projects.json`（可先 `cp projects.example.json projects.json`）：
+### 一键协作（推荐）
+
+```bash
+# 三工程放在同一父目录时：
+ESIM_ROOT=/你的/父目录 make collab
+
+# 已生成过 projects.json 时可：
+make collab
+```
+
+只同步+启动一轮（不常驻）：
+
+```bash
+bash scripts/esim-collab.sh --once
+```
+
+常用拆分命令：
+
+| 命令 | 作用 |
+|------|------|
+| `make discover-esim` | 发现三目录并写 `projects.json`（含 `start`） |
+| `make pull-projects` | 只 pull（拿手机端更新） |
+| `make start-esim` | 启动三项目联调 |
+| `make stop-esim` | 停止 |
+| `make push-three` | 一轮各自 commit + push |
+| `make watch-projects` | 常驻自动同步 |
+
+### 联调注意
+
+1. **ESIM_B** 一般为后端：在电脑跑起来后，把局域网 IP 告诉 A/I（如 `http://192.168.x.x:8080`）。
+2. **ESIM_A / ESIM_I**：若无法命令行启动，脚本会打印用 Android Studio / Xcode 打开的提示；你也可以在 `projects.json` 里改 `start`。
+3. 每个目录必须本身是 Git 仓库，且 `origin` 指向**各自**的 GitHub。
+4. `projects.json` 里可改 `start`、`healthUrl`：
 
 ```json
 {
-  "projectsRoot": "/你的/父目录",
+  "name": "ESIM_B",
+  "path": "ESIM_B",
+  "start": "npm run dev",
+  "healthUrl": "http://127.0.0.1:8080/health",
   "autoPull": true,
-  "autoPush": true,
-  "projects": [
-    { "name": "ESIM_B", "path": "ESIM_B", "remote": "origin", "enabled": true },
-    { "name": "ESIM_A", "path": "ESIM_A", "remote": "origin", "enabled": true },
-    { "name": "ESIM_I", "path": "ESIM_I", "remote": "origin", "enabled": true }
-  ]
+  "autoPush": true
 }
 ```
 
-每个工程必须本身已是 Git 仓库（含 `.git`），并且 `origin` 已指向各自的 GitHub 仓库。BugKiller 只负责监听与同步，不会替你新建远程仓库。
-
-可选：对本仓库（bugkiller）另开启动与规则修复：
-
-```bash
-make watch-dev     # 同步配置项目 + 启动本仓库并 auto-fix
-make start-fix
-```
-
-**自动修复范围（仅本仓库服务）：**
-
-| 日志信号 | 自动动作 |
-|----------|----------|
-| 缺依赖 / MODULE_NOT_FOUND | `npm install` 后重启 |
-| 端口占用 EADDRINUSE | `make stop` 后重启 |
-| 演示 `/api/boom` 错误 | 写入 `.env` `ALLOW_DEMO_BOOM=0` 并重启 |
-| 进程 uncaught / crash | 重启开发服务 |
-| 其他错误 | 只写入 `proposals/latest.md` |
-
-`projects.json` 已 gitignore。日志见 `logs/watch-commit.log`。
+`projects.json` 已 gitignore。日志：`logs/esim-*.log`、`logs/watch-commit.log`。
 
 ---
 
@@ -262,11 +268,13 @@ make start-fix
 | `make pull-dev` | pull + 启动 |
 | `make stop` | 停止后台进程 |
 | `make mobile` | Android/iOS 指引 |
+| `make collab` | 电脑一键协作：发现→pull→启动→常驻同步 |
 | `make discover-esim` | 发现本机 ESIM_B/A/I 并写 projects.json |
+| `make start-esim` / `make stop-esim` | 启停三项目联调 |
 | `make watch-projects` | 常驻监听三项目：commit/push + pull |
 | `make sync-projects` / `make push-three` | 一轮分别提交三项目到各自 GitHub |
-| `make pull-projects` | 一轮只 pull 三项目 |
-| `make watch-dev` | 同步 + 启动本仓库并自动修复 |
+| `make pull-projects` | 一轮只 pull 三项目（拿手机更新） |
+| `make watch-dev` | 本仓库同步 + 启动并自动修复 |
 | `make start-fix` | 启动本仓库 + 日志收集 + 自动修复 |
 | `make auto-fix` | 仅根据日志自动修复 |
 | `make logs` | 收集日志 |

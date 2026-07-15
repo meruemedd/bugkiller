@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# 发现本机 ESIM_B / ESIM_A / ESIM_I 目录，并生成 projects.json
+# 发现本机 ESIM_B / ESIM_A / ESIM_I，并生成带 start 命令的 projects.json
 # 用法:
 #   bash scripts/discover-esim.sh
-#   ESIM_ROOT=/path/to/parent bash scripts/discover-esim.sh
-#   bash scripts/discover-esim.sh --write   # 写入 projects.json
+#   ESIM_ROOT=/path/to/parent bash scripts/discover-esim.sh --write
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,135 +13,156 @@ for arg in "$@"; do
   esac
 done
 
-NAMES=(ESIM_B ESIM_A ESIM_I)
-declare -A FOUND=()
+export BK_ROOT="$ROOT"
+export ESIM_ROOT="${ESIM_ROOT:-}"
+export WRITE_FLAG="$WRITE"
 
-search_roots=()
-if [[ -n "${ESIM_ROOT:-}" ]]; then
-  search_roots+=("$ESIM_ROOT")
-fi
-search_roots+=(
-  "$ROOT/.."
-  "$HOME"
-  "$HOME/Desktop"
-  "$HOME/Documents"
-  "$HOME/Projects"
-  "$HOME/projects"
-  "$HOME/code"
-  "$HOME/dev"
-  "$HOME/src"
-  "$HOME/work"
-)
+python3 <<'PY'
+import json, os, subprocess
+from pathlib import Path
 
-echo "[discover-esim] 正在查找 ${NAMES[*]} …"
+ROOT = Path(os.environ["BK_ROOT"]).resolve()
+NAMES = ["ESIM_B", "ESIM_A", "ESIM_I"]
+WRITE = os.environ.get("WRITE_FLAG") == "1"
+esim_root = os.environ.get("ESIM_ROOT", "").strip()
 
-for name in "${NAMES[@]}"; do
-  for base in "${search_roots[@]}"; do
-    [[ -d "$base" ]] || continue
-    cand="$base/$name"
-    if [[ -d "$cand" ]]; then
-      # prefer git repos
-      if [[ -d "$cand/.git" ]] || git -C "$cand" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        FOUND["$name"]="$(cd "$cand" && pwd)"
-        break
-      fi
-      # keep non-git as fallback if nothing else
-      if [[ -z "${FOUND[$name]:-}" ]]; then
-        FOUND["$name"]="$(cd "$cand" && pwd)"
-      fi
-    fi
-  done
-done
+search_roots = []
+if esim_root:
+    search_roots.append(Path(esim_root).expanduser().resolve())
+search_roots += [
+    ROOT.parent,
+    Path.home(),
+    Path.home() / "Desktop",
+    Path.home() / "Documents",
+    Path.home() / "Projects",
+    Path.home() / "projects",
+    Path.home() / "code",
+    Path.home() / "dev",
+    Path.home() / "src",
+    Path.home() / "work",
+]
 
-missing=()
-for name in "${NAMES[@]}"; do
-  if [[ -n "${FOUND[$name]:-}" ]]; then
-    echo "[discover-esim] ✓ $name → ${FOUND[$name]}"
-  else
-    echo "[discover-esim] ✗ $name 未找到"
-    missing+=("$name")
-  fi
-done
+def is_git(p: Path) -> bool:
+    if (p / ".git").exists():
+        return True
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=p, capture_output=True, text=True,
+        )
+        return r.returncode == 0 and r.stdout.strip() == "true"
+    except Exception:
+        return False
 
-if [[ ${#missing[@]} -gt 0 ]]; then
-  echo
-  echo "[discover-esim] 请把父目录设到 ESIM_ROOT 后再跑，例如:"
-  echo "  ESIM_ROOT=/你的/父目录 bash scripts/discover-esim.sh --write"
-  echo "或手动编辑 projects.json 里三个 path。"
-fi
+def detect_start(abs_path: Path, name: str) -> str:
+    pkg = abs_path / "package.json"
+    if pkg.exists():
+        try:
+            scripts = json.loads(pkg.read_text()).get("scripts") or {}
+            for key in ("dev", "start", "serve"):
+                if key in scripts:
+                    return f"npm run {key}" if key != "start" else "npm start"
+        except Exception:
+            pass
+    if (abs_path / "docker-compose.yml").exists() or (abs_path / "compose.yaml").exists():
+        return "docker compose up"
+    if (abs_path / "gradlew").exists():
+        return "bash ./gradlew installDebug"
+    if (abs_path / "pom.xml").exists():
+        return "mvn -q spring-boot:run"
+    if name == "ESIM_B":
+        return "echo '[ESIM_B] 请在 projects.json 配置 start（如 npm run dev）'"
+    if name == "ESIM_A":
+        return "echo '[ESIM_A] 请用 Android Studio 打开工程，或配置 start'"
+    if name == "ESIM_I":
+        return "echo '[ESIM_I] 请用 Xcode 打开工程并 Run'"
+    return ""
 
-# 选择共同父目录（若找到的路径同父）
-projects_root=""
-if [[ ${#FOUND[@]} -gt 0 ]]; then
-  first="${FOUND[ESIM_B]:-${FOUND[ESIM_A]:-${FOUND[ESIM_I]}}}"
-  parent="$(dirname "$first")"
-  same_parent=1
-  for name in "${NAMES[@]}"; do
-    [[ -n "${FOUND[$name]:-}" ]] || continue
-    if [[ "$(dirname "${FOUND[$name]}")" != "$parent" ]]; then
-      same_parent=0
-      break
-    fi
-  done
-  if [[ "$same_parent" == "1" ]]; then
-    projects_root="$parent"
-  fi
-fi
+def detect_health(abs_path: Path, name: str) -> str:
+    # 留给用户在 projects.json 填写；不写死端口以免误报
+    return ""
 
-OUT_JSON="$ROOT/projects.json"
-tmp="$(mktemp)"
-{
-  echo '{'
-  if [[ -n "$projects_root" ]]; then
-    echo "  \"projectsRoot\": $(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$projects_root"),"
-  else
-    echo '  "projectsRoot": "",'
-  fi
-  cat <<'EOF'
-  "debounceMs": 8000,
-  "pollIntervalMs": 3000,
-  "pullIntervalMs": 60000,
-  "autoPull": true,
-  "autoPush": true,
-  "autoStart": false,
-  "autoFix": false,
-  "pullMode": "ff-only",
-  "commitMessage": "chore(auto): sync {name} @ {time}",
-  "projects": [
-EOF
-  first_item=1
-  for name in "${NAMES[@]}"; do
-    path_val="${FOUND[$name]:-}"
-    if [[ -z "$path_val" ]]; then
-      # placeholder relative name
-      if [[ -n "$projects_root" ]]; then
-        path_val="$name"
-      else
-        path_val="../$name"
-      fi
-      enabled=false
-    else
-      if [[ -n "$projects_root" && "$path_val" == "$projects_root"* ]]; then
-        path_val="$name"
-      fi
-      enabled=true
-    fi
-    [[ "$first_item" == "1" ]] || echo ","
-    first_item=0
-    printf '    {\n      "name": "%s",\n      "path": %s,\n      "remote": "origin",\n      "branch": "main",\n      "autoPull": true,\n      "autoPush": true,\n      "enabled": %s\n    }' \
-      "$name" "$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$path_val")" "$enabled"
-  done
-  echo
-  echo '  ]'
-  echo '}'
-} >"$tmp"
+found = {}
+print(f"[discover-esim] 正在查找 {' '.join(NAMES)} …")
+for name in NAMES:
+    for base in search_roots:
+        if not base.exists():
+            continue
+        cand = base / name
+        if not cand.is_dir():
+            continue
+        if is_git(cand):
+            found[name] = cand.resolve()
+            break
+        found.setdefault(name, cand.resolve())
 
-if [[ "$WRITE" == "1" ]]; then
-  mv "$tmp" "$OUT_JSON"
-  echo "[discover-esim] 已写入 $OUT_JSON"
-else
-  echo
-  echo "[discover-esim] 预览配置（加 --write 写入 projects.json）："
-  cat "$tmp"
-  rm -f "$tmp"
-fi
+for name in NAMES:
+    if name in found:
+        print(f"[discover-esim] ✓ {name} → {found[name]}")
+    else:
+        print(f"[discover-esim] ✗ {name} 未找到")
+
+if len(found) < 3:
+    print()
+    print("[discover-esim] 请把父目录设到 ESIM_ROOT 后再跑，例如:")
+    print("  ESIM_ROOT=/你的/父目录 bash scripts/discover-esim.sh --write")
+
+# common parent
+projects_root = ""
+parents = {p.parent for p in found.values()}
+if len(parents) == 1:
+    projects_root = str(next(iter(parents)))
+
+projects = []
+for name in NAMES:
+    if name in found:
+        abs_p = found[name]
+        path = name if projects_root and abs_p.parent == Path(projects_root) else str(abs_p)
+        enabled = True
+        start = detect_start(abs_p, name)
+        health = detect_health(abs_p, name)
+    else:
+        path = name if projects_root else f"../{name}"
+        enabled = False
+        start = detect_start(Path("/nonexistent"), name)
+        health = detect_health(Path("/nonexistent"), name)
+        abs_p = None
+
+    item = {
+        "name": name,
+        "path": path,
+        "remote": "origin",
+        "branch": "main",
+        "autoPull": True,
+        "autoPush": True,
+        "enabled": enabled,
+        "start": start,
+    }
+    if health:
+        item["healthUrl"] = health
+    projects.append(item)
+
+cfg = {
+    "projectsRoot": projects_root,
+    "debounceMs": 8000,
+    "pollIntervalMs": 3000,
+    "pullIntervalMs": 60000,
+    "autoPull": True,
+    "autoPush": True,
+    "autoStart": False,
+    "autoFix": False,
+    "pullMode": "ff-only",
+    "commitMessage": "chore(auto): sync {name} @ {time}",
+    "projects": projects,
+}
+
+text = json.dumps(cfg, ensure_ascii=False, indent=2) + "\n"
+out = ROOT / "projects.json"
+if WRITE:
+    out.write_text(text, encoding="utf-8")
+    print(f"[discover-esim] 已写入 {out}")
+else:
+    print()
+    print("[discover-esim] 预览配置（加 --write 写入 projects.json）：")
+    print(text)
+PY

@@ -1,9 +1,8 @@
 {
-  "projectsRoot": "../",
+  "projectsRoot": "/你的/电脑/上/三个项目的父目录",
   "debounceMs": 8000,
   "pollIntervalMs": 3000,
   "pullIntervalMs": 60000,
-  "fixIntervalMs": 120000,
   "autoPull": true,
   "autoPush": true,
   "autoStart": false,
@@ -18,7 +17,9 @@
       "branch": "main",
       "autoPull": true,
       "autoPush": true,
-      "enabled": true
+      "enabled": true,
+      "start": "npm run dev",
+      "healthUrl": "http://127.0.0.1:8080/health"
     },
     {
       "name": "ESIM_A",
@@ -27,7 +28,8 @@
       "branch": "main",
       "autoPull": true,
       "autoPush": true,
-      "enabled": true
+      "enabled": true,
+      "start": "echo '[ESIM_A] 用 Android Studio Run，API 指向电脑局域网 IP'"
     },
     {
       "name": "ESIM_I",
@@ -36,7 +38,8 @@
       "branch": "main",
       "autoPull": true,
       "autoPush": true,
-      "enabled": true
+      "enabled": true,
+      "start": "echo '[ESIM_I] 用 Xcode Run，API 指向电脑局域网 IP'"
     }
   ]
 }
