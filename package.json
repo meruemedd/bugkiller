@@ -22,6 +22,7 @@
     "pull:projects": "node scripts/watch-and-commit.mjs --pull-only",
     "discover:esim": "bash scripts/discover-esim.sh --write",
     "collab": "bash scripts/esim-collab.sh",
+    "mac:collab": "bash scripts/mac-collab.sh",
     "start:esim": "bash scripts/start-esim-projects.sh --restart",
     "stop:esim": "bash scripts/stop-esim-projects.sh",
     "push:three": "bash scripts/push-three-projects.sh",

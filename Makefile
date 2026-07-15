@@ -1,10 +1,11 @@
-.PHONY: setup pull dev pull-dev stop mobile logs optimize auto-fix start-fix watch-projects sync-projects pull-projects watch-dev discover-esim push-three collab start-esim stop-esim check-esim help
+.PHONY: setup pull dev pull-dev stop mobile logs optimize auto-fix start-fix watch-projects sync-projects pull-projects watch-dev discover-esim push-three collab mac-collab start-esim stop-esim check-esim help
 
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 help:
 	@echo "BugKiller × ESIM 协作:"
 	@echo "  collab          电脑端一键协作（须在 Mac 本机终端运行）"
+	@echo "  mac-collab      Mac 本机：pull 工具仓库后启动三工程联调"
 	@echo "  check-esim      检查本机 ESIM_A/B/I 路径是否存在"
 	@echo "  discover-esim   发现 ESIM_B/A/I 并写 projects.json"
 	@echo "  start-esim      启动三项目联调"
@@ -62,6 +63,9 @@ stop-esim:
 
 collab:
 	cd "$(ROOT)" && bash scripts/esim-collab.sh
+
+mac-collab:
+	cd "$(ROOT)" && bash scripts/mac-collab.sh
 
 watch-projects:
 	cd "$(ROOT)" && node scripts/watch-and-commit.mjs
