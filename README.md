@@ -35,9 +35,9 @@
         ↓
   scripts/optimize-from-logs.sh → proposals/（修复提案，人工确认后再改代码）
 
-另：多本地独立仓库可用 make watch-projects
-     → 监听各自改动 → 各自 commit / push
-     → 定时从各自 remote 自动 pull（默认含本仓库 bugkiller）
+另：电脑端与手机协作三工程 ESIM_B / ESIM_A / ESIM_I
+     → make collab
+     → pull 手机改动 → 启动联调 → 本地改动自动 commit/push
 ```
 
 ---
@@ -178,48 +178,92 @@ npm run optimize
 
 | 能自动做的 | 需人工确认的 |
 |------------|--------------|
-| 启停服务、聚合日志、生成修复提案 | 真正改业务代码并提交 |
-| 在提案中标出可疑文件与可能原因 | 选择采用哪条修复方案 |
-| CI 上跑基础语法/安装检查 | 合并 PR、发布应用商店 |
+| 启停服务、聚合日志、规则引擎自动修复（缺依赖/端口/演示 boom/崩溃重启） | 复杂业务逻辑改动 |
+| 生成修复提案到 `proposals/` | 采用提案中非常规方案并合并发布 |
+| `make watch-dev` 同步 + 启动 + 修复闭环 | 应用商店发布 |
 
 ---
 
-## 5. 多本地项目双向同步（自动 pull + 自动提交）
+## 5. 电脑端协作：ESIM_B / ESIM_A / ESIM_I
 
-本机若有多个独立 Git 项目（**默认包含本仓库 `bugkiller`，`path: "."`**），可用本工具：
+目标：**手机改代码推 GitHub ↔ 电脑拉取、启动联调、改完再推回**，三工程各自进各自的 GitHub 仓库。
 
-1. **自动拉取**：定时 `fetch` + `pull`（默认 `--ff-only`），手机/别处推上来的更新会进电脑
-2. **自动提交**：本地有改动则 debounce 后 `add` / `commit`，并可选 `push` 回各自 remote
-
-```bash
-cp projects.example.json projects.json
-# 确认 bugkiller 的 path 为 "."；其他项目改成本机真实目录
-make watch-projects          # 常驻：监听改动 + 定时 pull（推荐电脑常开）
-make pull-projects           # 只拉一轮各项目（含本仓库）
-make sync-projects           # 一轮：commit → pull → push
-npm run sync:projects:dry    # 预览，不写 Git
+```text
+[手机] Working Copy / GitHub App
+   编辑 ESIM_B 或 ESIM_A 或 ESIM_I → Commit → Push
+                    ↓
+              [GitHub 各自仓库]
+                    ↓
+[电脑] make collab
+   ① discover 三个目录
+   ② 各自 git pull（拿到手机改动）
+   ③ 启动三项目联调（B 后端 / A 安卓 / I iOS）
+   ④ 常驻：本地改动 → 各自 commit/push
+                    ↓
+[手机] Pull 即可拿到电脑改动
 ```
 
-`projects.json` 要点：
+### 一键协作（推荐）
 
-| 字段 | 说明 |
+```bash
+# 自动发现三个目录的绝对路径，并写入 projects.json
+make discover-esim
+# 或指定父目录：
+# ESIM_ROOT=/三个项目的父目录 make discover-esim
+
+# 一键协作
+make collab
+```
+
+`make discover-esim` 会把找到的**绝对路径**拼进 `projects.json`，例如：
+
+```json
+{
+  "projectsRoot": "/Users/you/code",
+  "projects": [
+    { "name": "ESIM_B", "path": "/Users/you/code/ESIM_B", "enabled": true },
+    { "name": "ESIM_A", "path": "/Users/you/code/ESIM_A", "enabled": true },
+    { "name": "ESIM_I", "path": "/Users/you/code/ESIM_I", "enabled": true }
+  ]
+}
+```
+
+只同步+启动一轮（不常驻）：
+
+```bash
+bash scripts/esim-collab.sh --once
+```
+
+常用拆分命令：
+
+| 命令 | 作用 |
 |------|------|
-| `projects[].name` | 展示名（写入 commit message） |
-| `projects[].path` | 本地绝对/相对路径；本仓库用 `"."` |
-| `projects[].remote` | 默认 `origin` |
-| `projects[].branch` | 可选；不填则用当前分支（本仓库示例为 `main`） |
-| `projects[].autoPull` | 是否自动 pull；可覆盖全局 `autoPull`（默认 true） |
-| `projects[].autoPush` | 是否 push；可覆盖全局 `autoPush` |
-| `debounceMs` | 停止改动后多久再提交，默认 8000 |
-| `pollIntervalMs` | 本地改动轮询间隔，默认 3000 |
-| `pullIntervalMs` | 自动 pull 间隔，默认 60000 |
-| `pullMode` | `ff-only`（默认）或 `rebase` |
+| `make discover-esim` | 发现三目录并写 `projects.json`（含 `start`） |
+| `make pull-projects` | 只 pull（拿手机端更新） |
+| `make start-esim` | 启动三项目联调 |
+| `make stop-esim` | 停止 |
+| `make push-three` | 一轮各自 commit + push |
+| `make watch-projects` | 常驻自动同步 |
 
-同步顺序（每个项目）：有本地改动先 commit → pull → 若仍领先再 push。工作区脏且无法先提交时会跳过 pull，避免覆盖未保存改动。
+### 联调注意
 
-日志追加到 `logs/watch-commit.log`。本机路径配置勿提交：`projects.json` 已在 `.gitignore`。
+1. **ESIM_B** 一般为后端：在电脑跑起来后，把局域网 IP 告诉 A/I（如 `http://192.168.x.x:8080`）。
+2. **ESIM_A / ESIM_I**：若无法命令行启动，脚本会打印用 Android Studio / Xcode 打开的提示；你也可以在 `projects.json` 里改 `start`。
+3. 每个目录必须本身是 Git 仓库，且 `origin` 指向**各自**的 GitHub。
+4. `projects.json` 里可改 `start`、`healthUrl`：
 
-> 注意：`apps/web` / `apps/api` / `packages/shared` 是**同一 monorepo**，不是三个独立仓库。额外业务项目请在 `projects.json` 里另填真正独立的本地 Git 目录。
+```json
+{
+  "name": "ESIM_B",
+  "path": "ESIM_B",
+  "start": "npm run dev",
+  "healthUrl": "http://127.0.0.1:8080/health",
+  "autoPull": true,
+  "autoPush": true
+}
+```
+
+`projects.json` 已 gitignore。日志：`logs/esim-*.log`、`logs/watch-commit.log`。
 
 ---
 
@@ -239,9 +283,15 @@ npm run sync:projects:dry    # 预览，不写 Git
 | `make pull-dev` | pull + 启动 |
 | `make stop` | 停止后台进程 |
 | `make mobile` | Android/iOS 指引 |
-| `make watch-projects` | 常驻：多项目 commit/push + 定时 pull |
-| `make sync-projects` | 扫描一轮：commit → pull → push |
-| `make pull-projects` | 扫描一轮：只 pull（含本仓库） |
+| `make collab` | 电脑一键协作：发现→pull→启动→常驻同步 |
+| `make discover-esim` | 发现本机 ESIM_B/A/I 并写 projects.json |
+| `make start-esim` / `make stop-esim` | 启停三项目联调 |
+| `make watch-projects` | 常驻监听三项目：commit/push + pull |
+| `make sync-projects` / `make push-three` | 一轮分别提交三项目到各自 GitHub |
+| `make pull-projects` | 一轮只 pull 三项目（拿手机更新） |
+| `make watch-dev` | 本仓库同步 + 启动并自动修复 |
+| `make start-fix` | 启动本仓库 + 日志收集 + 自动修复 |
+| `make auto-fix` | 仅根据日志自动修复 |
 | `make logs` | 收集日志 |
 | `make optimize` | 生成优化提案 |
 

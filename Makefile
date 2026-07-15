@@ -1,22 +1,21 @@
-.PHONY: setup pull dev pull-dev stop mobile logs optimize watch-projects sync-projects pull-projects help
+.PHONY: setup pull dev pull-dev stop mobile logs optimize auto-fix start-fix watch-projects sync-projects pull-projects watch-dev discover-esim push-three collab start-esim stop-esim help
 
 ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 help:
-	@echo "BugKiller make targets:"
-	@echo "  setup           npm install"
-	@echo "  pull            git pull（仅本仓库）"
-	@echo "  dev             启动 Web + API + Shared（纯本地，无需 GitHub）"
-	@echo "  pull-dev        git pull + 启动"
-	@echo "  stop            停止后台进程"
-	@echo "  mobile          Android/iOS 构建安装指引"
-	@echo "  watch-projects  常驻：本地改动 commit/push + 定时 pull（含本仓库）"
-	@echo "  sync-projects   扫描一轮：commit → pull → push"
-	@echo "  pull-projects   扫描一轮：只 pull 各配置项目（含本仓库）"
-	@echo "  logs            收集日志到 logs/"
-	@echo "  optimize        根据日志生成 proposals/"
+	@echo "BugKiller × ESIM 协作:"
+	@echo "  collab          电脑端一键协作：发现→pull→启动三项目→常驻同步推送"
+	@echo "  discover-esim   发现 ESIM_B/A/I 并写 projects.json"
+	@echo "  start-esim      启动三项目联调"
+	@echo "  stop-esim       停止三项目进程"
+	@echo "  push-three      一轮：三项目各自 commit + push 到 GitHub"
+	@echo "  watch-projects  常驻：改动自动 commit/push + 定时 pull"
+	@echo "  pull-projects   一轮：只 pull（拿手机端更新）"
 	@echo ""
-	@echo "本地联调可跳过 GitHub，直接: make setup && make dev"
+	@echo "本仓库脚手架:"
+	@echo "  setup / dev / stop / logs / optimize / watch-dev / start-fix"
+	@echo ""
+	@echo "手机↔电脑: 手机 Working Copy push → 电脑 make collab → 本机改完自动 push → 手机 pull"
 
 setup:
 	cd "$(ROOT)" && npm install
@@ -42,11 +41,35 @@ logs:
 optimize:
 	cd "$(ROOT)" && bash scripts/optimize-from-logs.sh
 
+auto-fix:
+	cd "$(ROOT)" && bash scripts/auto-fix.sh
+
+start-fix:
+	cd "$(ROOT)" && bash scripts/start-and-fix.sh
+
+discover-esim:
+	cd "$(ROOT)" && bash scripts/discover-esim.sh --write
+
+start-esim:
+	cd "$(ROOT)" && bash scripts/start-esim-projects.sh --restart
+
+stop-esim:
+	cd "$(ROOT)" && bash scripts/stop-esim-projects.sh
+
+collab:
+	cd "$(ROOT)" && bash scripts/esim-collab.sh
+
 watch-projects:
 	cd "$(ROOT)" && node scripts/watch-and-commit.mjs
+
+watch-dev:
+	cd "$(ROOT)" && node scripts/watch-and-commit.mjs --with-dev
 
 sync-projects:
 	cd "$(ROOT)" && node scripts/watch-and-commit.mjs --once
 
 pull-projects:
 	cd "$(ROOT)" && node scripts/watch-and-commit.mjs --pull-only
+
+push-three:
+	cd "$(ROOT)" && bash scripts/push-three-projects.sh
