@@ -215,18 +215,20 @@ make discover-esim
 make collab
 ```
 
-`make discover-esim` 会把找到的**绝对路径**拼进 `projects.json`，例如：
+本机已知路径（已写入仓库 `projects.esim.json`）：
 
-```json
-{
-  "projectsRoot": "/Users/you/code",
-  "projects": [
-    { "name": "ESIM_B", "path": "/Users/you/code/ESIM_B", "enabled": true },
-    { "name": "ESIM_A", "path": "/Users/you/code/ESIM_A", "enabled": true },
-    { "name": "ESIM_I", "path": "/Users/you/code/ESIM_I", "enabled": true }
-  ]
-}
+| 项目 | 绝对路径 |
+|------|----------|
+| ESIM_A | `/Users/air/Documents/code/ESIM/ESIM_A`（已确认） |
+| ESIM_B | `/Users/air/Documents/code/ESIM/ESIM_B`（同级推断） |
+| ESIM_I | `/Users/air/Documents/code/ESIM/ESIM_I`（同级推断） |
+
+```bash
+cp projects.esim.json projects.json   # 或直接 make collab（会自动选用）
+make collab
 ```
+
+若 B/I 实际路径不同，改 `projects.json` 里对应 `path` 即可。
 
 只同步+启动一轮（不常驻）：
 

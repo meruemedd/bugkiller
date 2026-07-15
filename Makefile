@@ -48,7 +48,7 @@ start-fix:
 	cd "$(ROOT)" && bash scripts/start-and-fix.sh
 
 discover-esim:
-	cd "$(ROOT)" && bash scripts/discover-esim.sh --write
+	cd "$(ROOT)" && ESIM_ROOT="$${ESIM_ROOT:-/Users/air/Documents/code/ESIM}" bash scripts/discover-esim.sh --write
 
 start-esim:
 	cd "$(ROOT)" && bash scripts/start-esim-projects.sh --restart

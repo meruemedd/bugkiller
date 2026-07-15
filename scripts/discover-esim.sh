@@ -83,6 +83,8 @@ def find_named_dirs():
         Path.home() / "src",
         Path.home() / "work",
         Path.home() / "workspace",
+        Path("/Users/air/Documents/code/ESIM"),
+        Path.home() / "Documents" / "code" / "ESIM",
         Path("/tmp/esim-parent"),
         Path("/tmp"),
         Path("/opt"),

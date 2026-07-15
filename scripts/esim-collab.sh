@@ -34,14 +34,24 @@ echo " 手机改代码 → GitHub → 本机 pull → 启动联调"
 echo " 本机改代码 → 自动 commit/push → 手机 pull"
 echo "============================================"
 
-if [[ "$NO_DISCOVER" != "1" ]]; then
+# 已知本机路径时可直接用 projects.esim.json，不必再 discover
+if [[ ! -f "$ROOT/projects.json" && -f "$ROOT/projects.esim.json" ]]; then
+  echo "[collab] 使用已配置路径 projects.esim.json → projects.json"
+  cp "$ROOT/projects.esim.json" "$ROOT/projects.json"
+fi
+
+if [[ "$NO_DISCOVER" != "1" && ! -f "$ROOT/projects.json" ]]; then
   echo
   echo "[collab] ① 发现 ESIM_B / ESIM_A / ESIM_I …"
   if [[ -n "${ESIM_ROOT:-}" ]]; then
     ESIM_ROOT="$ESIM_ROOT" bash "$ROOT/scripts/discover-esim.sh" --write
   else
-    bash "$ROOT/scripts/discover-esim.sh" --write
+    ESIM_ROOT="${ESIM_ROOT:-/Users/air/Documents/code/ESIM}" bash "$ROOT/scripts/discover-esim.sh" --write
   fi
+fi
+
+if [[ ! -f "$ROOT/projects.json" && -f "$ROOT/projects.esim.json" ]]; then
+  cp "$ROOT/projects.esim.json" "$ROOT/projects.json"
 fi
 
 if [[ ! -f "$ROOT/projects.json" ]]; then

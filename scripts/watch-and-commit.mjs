@@ -35,10 +35,18 @@ const dryRun = args.has("--dry-run");
 const pullOnly = args.has("--pull-only");
 const withDev = args.has("--with-dev");
 const configArgIdx = argv.indexOf("--config");
+function defaultConfigPath() {
+  const primary = resolve(ROOT, "projects.json");
+  const esim = resolve(ROOT, "projects.esim.json");
+  if (existsSync(primary)) return primary;
+  if (existsSync(esim)) return esim;
+  return primary;
+}
+
 const configPath =
   configArgIdx >= 0 && argv[configArgIdx + 1]
     ? resolve(process.cwd(), argv[configArgIdx + 1])
-    : resolve(ROOT, "projects.json");
+    : defaultConfigPath();
 
 function fail(msg, code = 1) {
   console.error(`[watch-and-commit] ${msg}`);
@@ -49,8 +57,9 @@ function loadConfig() {
   if (!existsSync(configPath)) {
     fail(
       `找不到配置 ${configPath}\n` +
-        `请复制示例后按本机路径填写:\n` +
-        `  cp projects.example.json projects.json`
+        `请使用已填好本机路径的配置，或复制示例:\n` +
+        `  cp projects.esim.json projects.json\n` +
+        `  # 或: cp projects.example.json projects.json`
     );
   }
 
