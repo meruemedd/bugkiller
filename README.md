@@ -206,11 +206,26 @@ npm run optimize
 ### 一键协作（推荐）
 
 ```bash
-# 三工程放在同一父目录时：
-ESIM_ROOT=/你的/父目录 make collab
+# 自动发现三个目录的绝对路径，并写入 projects.json
+make discover-esim
+# 或指定父目录：
+# ESIM_ROOT=/三个项目的父目录 make discover-esim
 
-# 已生成过 projects.json 时可：
+# 一键协作
 make collab
+```
+
+`make discover-esim` 会把找到的**绝对路径**拼进 `projects.json`，例如：
+
+```json
+{
+  "projectsRoot": "/Users/you/code",
+  "projects": [
+    { "name": "ESIM_B", "path": "/Users/you/code/ESIM_B", "enabled": true },
+    { "name": "ESIM_A", "path": "/Users/you/code/ESIM_A", "enabled": true },
+    { "name": "ESIM_I", "path": "/Users/you/code/ESIM_I", "enabled": true }
+  ]
+}
 ```
 
 只同步+启动一轮（不常驻）：
