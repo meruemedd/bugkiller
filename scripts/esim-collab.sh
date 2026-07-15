@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 # 电脑端协作闭环（与手机端 Working Copy / GitHub App 配合）:
-#   1) 发现 ESIM_B / ESIM_A / ESIM_I
-#   2) 从 GitHub pull（拿手机端刚推的改动）
-#   3) 启动三项目联调
-#   4) 常驻：本地改动自动 commit/push（手机再 pull）
+#   必须在 Mac 本机终端运行（路径 /Users/air/...），云端 Agent 无法访问。
 #
 # 用法:
 #   make collab
-#   bash scripts/esim-collab.sh
-#   ESIM_ROOT=/父目录 bash scripts/esim-collab.sh
-#   bash scripts/esim-collab.sh --once          # 只同步+启动一轮，不常驻监听
-#   bash scripts/esim-collab.sh --no-start      # 只 git 同步，不启动
-#   bash scripts/esim-collab.sh --no-discover   # 不重新发现，沿用 projects.json
+#   bash scripts/esim-collab.sh --once
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,58 +26,39 @@ echo " BugKiller × ESIM 电脑端协作"
 echo " 手机改代码 → GitHub → 本机 pull → 启动联调"
 echo " 本机改代码 → 自动 commit/push → 手机 pull"
 echo "============================================"
+echo "[collab] 系统=$(uname -s) 主机=$(hostname)"
 
-# 已知本机路径时可直接用 projects.esim.json，不必再 discover
+# 已知本机路径时可直接用 projects.esim.json
 if [[ ! -f "$ROOT/projects.json" && -f "$ROOT/projects.esim.json" ]]; then
   echo "[collab] 使用已配置路径 projects.esim.json → projects.json"
   cp "$ROOT/projects.esim.json" "$ROOT/projects.json"
 fi
 
-if [[ "$NO_DISCOVER" != "1" && ! -f "$ROOT/projects.json" ]]; then
-  echo
-  echo "[collab] ① 发现 ESIM_B / ESIM_A / ESIM_I …"
-  if [[ -n "${ESIM_ROOT:-}" ]]; then
-    ESIM_ROOT="$ESIM_ROOT" bash "$ROOT/scripts/discover-esim.sh" --write
-  else
+# 若配置了 Mac 绝对路径但当前不在 Mac，直接给出清晰错误
+if [[ -f "$ROOT/projects.json" ]] || [[ -f "$ROOT/projects.esim.json" ]]; then
+  if ! bash "$ROOT/scripts/check-esim-paths.sh"; then
+    code=$?
+    if [[ "$code" == "2" ]]; then
+      exit 2
+    fi
+    # Darwin 上路径缺失：尝试用 ESIM_ROOT 再发现一次
+    if [[ "$(uname -s)" == "Darwin" && "$NO_DISCOVER" != "1" ]]; then
+      echo
+      echo "[collab] ① 本机路径缺失，尝试 discover…"
+      ESIM_ROOT="${ESIM_ROOT:-/Users/air/Documents/code/ESIM}" bash "$ROOT/scripts/discover-esim.sh" --write
+      bash "$ROOT/scripts/check-esim-paths.sh" || exit 1
+    else
+      exit "$code"
+    fi
+  fi
+else
+  if [[ "$NO_DISCOVER" != "1" ]]; then
+    echo
+    echo "[collab] ① 发现 ESIM_B / ESIM_A / ESIM_I …"
     ESIM_ROOT="${ESIM_ROOT:-/Users/air/Documents/code/ESIM}" bash "$ROOT/scripts/discover-esim.sh" --write
   fi
+  bash "$ROOT/scripts/check-esim-paths.sh" || exit 1
 fi
-
-if [[ ! -f "$ROOT/projects.json" && -f "$ROOT/projects.esim.json" ]]; then
-  cp "$ROOT/projects.esim.json" "$ROOT/projects.json"
-fi
-
-if [[ ! -f "$ROOT/projects.json" ]]; then
-  echo "[collab] 缺少 projects.json。请设置 ESIM_ROOT 后重试。" >&2
-  exit 1
-fi
-
-# 校验至少有一个 enabled 且路径存在
-node --input-type=module <<'EOF' || exit 1
-import { readFileSync, existsSync } from "node:fs";
-import { resolve, isAbsolute, join } from "node:path";
-const root = process.cwd();
-const raw = JSON.parse(readFileSync(join(root, "projects.json"), "utf8"));
-const projectsRoot = (process.env.ESIM_ROOT || raw.projectsRoot || "").trim();
-const base = projectsRoot
-  ? isAbsolute(projectsRoot) ? projectsRoot : resolve(root, projectsRoot)
-  : root;
-let ok = 0;
-for (const p of raw.projects || []) {
-  if (p.enabled === false) continue;
-  const abs = isAbsolute(p.path) ? p.path : resolve(base, p.path);
-  if (existsSync(abs)) {
-    ok++;
-    console.log(`[collab]   · ${p.name} → ${abs}`);
-  } else {
-    console.warn(`[collab]   · ${p.name} 缺失: ${abs}`);
-  }
-}
-if (ok === 0) {
-  console.error("[collab] 未找到任何 ESIM 项目目录。请设置 ESIM_ROOT=/三项目父目录");
-  process.exit(1);
-}
-EOF
 
 echo
 echo "[collab] ② 与 GitHub 双向同步（本地改动先 commit，再 pull 手机更新，再 push）…"

@@ -224,11 +224,15 @@ make collab
 | ESIM_I | `/Users/air/Documents/code/ESIM/ESIM_I`（已确认） |
 
 ```bash
-cp projects.esim.json projects.json   # 或直接 make collab（会自动选用）
+# 必须在 Mac 本机「终端.app」或本机 Cursor 终端执行（云端 Agent 读不到 /Users/air）
+cd <bugkiller仓库目录>
+git pull
+ls /Users/air/Documents/code/ESIM    # 应能看到 ESIM_A ESIM_B ESIM_I
+make check-esim
 make collab
 ```
 
-若 B/I 实际路径不同，改 `projects.json` 里对应 `path` 即可。
+若提示路径缺失：说明当前终端不在 Mac 本机，或不在上述文件夹；`make check-esim` 会说明原因。
 
 只同步+启动一轮（不常驻）：
 
