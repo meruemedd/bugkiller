@@ -18,8 +18,8 @@
       "autoPull": true,
       "autoPush": true,
       "enabled": true,
-      "start": "npm run dev",
-      "healthUrl": "http://127.0.0.1:8080/health"
+      "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+      "healthUrl": "http://127.0.0.1:8000/health"
     },
     {
       "name": "ESIM_A",
@@ -29,17 +29,17 @@
       "autoPull": true,
       "autoPush": true,
       "enabled": true,
-      "start": "echo '[ESIM_A] 用 Android Studio Run，API 指向电脑局域网 IP'"
+      "start": "flutter run -d android"
     },
     {
       "name": "ESIM_I",
-      "path": "/Users/air/Documents/code/ESIM/ESIM_I",
+      "path": "/Users/air/Documents/code/ESIM/ESIM_I/esim_app",
       "remote": "origin",
       "branch": "main",
       "autoPull": true,
       "autoPush": true,
       "enabled": true,
-      "start": "echo '[ESIM_I] 用 Xcode Run，API 指向电脑局域网 IP'"
+      "start": "flutter run -d ios"
     }
   ]
 }

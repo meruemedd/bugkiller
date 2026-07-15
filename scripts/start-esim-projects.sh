@@ -50,6 +50,21 @@ function absPath(p) {
 }
 
 function detectStart(abs, name) {
+  // ESIM shapes first (backend is FastAPI, clients are Flutter)
+  if (name === "ESIM_B" || existsSync(join(abs, "app", "main.py"))) {
+    return "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload";
+  }
+  if (name === "ESIM_A" || (existsSync(join(abs, "pubspec.yaml")) && existsSync(join(abs, "android")))) {
+    return "flutter run -d android";
+  }
+  if (name === "ESIM_I") {
+    if (existsSync(join(abs, "esim_app", "pubspec.yaml"))) {
+      return "cd esim_app && flutter run -d ios";
+    }
+    if (existsSync(join(abs, "pubspec.yaml"))) {
+      return "flutter run -d ios";
+    }
+  }
   const pkg = join(abs, "package.json");
   if (existsSync(pkg)) {
     try {
@@ -68,15 +83,14 @@ function detectStart(abs, name) {
   if (existsSync(join(abs, "Pom.xml")) || existsSync(join(abs, "pom.xml"))) {
     return "mvn -q spring-boot:run";
   }
-  // iOS / Android 提示型命令
   if (name === "ESIM_I" || existsSync(join(abs, "Podfile"))) {
-    return "echo '[ESIM_I] 请用 Xcode 打开工程并 Run 模拟器/真机'";
+    return "flutter run -d ios";
   }
   if (name === "ESIM_A") {
-    return "echo '[ESIM_A] 请用 Android Studio 打开工程，或配置 start 命令'";
+    return "flutter run -d android";
   }
   if (name === "ESIM_B") {
-    return "echo '[ESIM_B] 未检测到可启动脚本，请在 projects.json 设置 start'";
+    return "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload";
   }
   return "";
 }

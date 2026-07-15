@@ -36,6 +36,17 @@ def is_git(p):
         return False
 
 def detect_start(abs_path, name):
+    # Prefer explicit ESIM shapes over generic npm (ESIM_B is FastAPI)
+    if name == "ESIM_B" or (abs_path / "app" / "main.py").exists():
+        return "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    if name == "ESIM_A" or ((abs_path / "pubspec.yaml").exists() and (abs_path / "android").is_dir()):
+        return "flutter run -d android"
+    ios_app = abs_path / "esim_app"
+    if name == "ESIM_I":
+        if (ios_app / "pubspec.yaml").exists():
+            return "cd esim_app && flutter run -d ios"
+        if (abs_path / "pubspec.yaml").exists():
+            return "flutter run -d ios"
     pkg = abs_path / "package.json"
     if pkg.exists():
         try:
@@ -55,9 +66,9 @@ def detect_start(abs_path, name):
     if (abs_path / "pom.xml").exists():
         return "mvn -q spring-boot:run"
     tips = {
-        "ESIM_B": "echo '[ESIM_B] 请在 projects.json 配置 start（如 npm run dev）'",
-        "ESIM_A": "echo '[ESIM_A] 请用 Android Studio 打开工程，或配置 start'",
-        "ESIM_I": "echo '[ESIM_I] 请用 Xcode 打开工程并 Run'",
+        "ESIM_B": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+        "ESIM_A": "flutter run -d android",
+        "ESIM_I": "cd esim_app && flutter run -d ios",
     }
     return tips.get(name, "")
 
@@ -177,7 +188,7 @@ for name in NAMES:
         enabled = False
         start = detect_start(Path(path), name)
 
-    projects.append({
+    entry = {
         "name": name,
         "path": path,
         "remote": "origin",
@@ -186,7 +197,14 @@ for name in NAMES:
         "autoPush": True,
         "enabled": enabled,
         "start": start,
-    })
+    }
+    if name == "ESIM_B":
+        entry["healthUrl"] = "http://127.0.0.1:8000/health"
+    # iOS Flutter app lives in esim_app/
+    if name == "ESIM_I" and (Path(path) / "esim_app" / "pubspec.yaml").exists():
+        entry["path"] = str(Path(path) / "esim_app")
+        entry["start"] = "flutter run -d ios"
+    projects.append(entry)
 
 cfg = {
     "projectsRoot": projects_root,
